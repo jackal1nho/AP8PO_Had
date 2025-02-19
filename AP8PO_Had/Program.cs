@@ -1,5 +1,6 @@
 ﻿using static System.Console;
 
+
 namespace AP8PO_Had
 {
     class Program
