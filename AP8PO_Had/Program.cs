@@ -103,7 +103,25 @@ namespace AP8PO_Had
         {
             SetCursorPosition(screenWidth / 3, screenHeight / 2);
             WriteLine($"Game Over! Score: {score}");
+
+            // Display Advertisement
+            ShowAdvertisement();
         }
+
+        private void ShowAdvertisement()
+        {
+            SetCursorPosition(screenWidth / 4, screenHeight / 2 + 2);
+            WriteLine("*************************************");
+            SetCursorPosition(screenWidth / 4, screenHeight / 2 + 3);
+            WriteLine("The best games at throwtable.com (╯°□°)╯︵ ┻━┻");
+            SetCursorPosition(screenWidth / 4, screenHeight / 2 + 4);
+            WriteLine("*************************************");
+            
+            SetCursorPosition(screenWidth / 4, screenHeight / 2 + 6);
+            WriteLine("Press any key to exit...");
+            ReadKey();
+        }
+
     }
 
     class Snake
