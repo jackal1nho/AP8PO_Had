@@ -1,13 +1,12 @@
 ﻿using static System.Console;
 
-
 namespace AP8PO_Had
 {
     class Program
     {
         static void Main()
         {
-            Game game = new Game(32, 16);
+            Game game = new Game(64, 24);
             game.Run();
         }
     }
@@ -31,8 +30,17 @@ namespace AP8PO_Had
             random = new Random();
             snake = new Snake(screenWidth / 2, screenHeight / 2);
             berry = new Berry(random.Next(1, screenWidth - 2), random.Next(1, screenHeight - 2));
-            WindowHeight = screenHeight;
-            WindowWidth = screenWidth;
+
+            try
+            {
+                SetWindowSize(screenWidth, screenHeight);
+                BufferWidth = screenWidth;
+                BufferHeight = screenHeight;
+            }
+            catch
+            {
+                WriteLine("Warning: Cannot resize console window.");
+            }
         }
 
         public void Run()
@@ -42,9 +50,11 @@ namespace AP8PO_Had
                 Clear();
                 DrawBorders();
                 CheckCollisions();
-                DrawObjects();
                 snake.Move();
-                Thread.Sleep(150);
+                DrawObjects();
+                
+                int speed = Math.Max(50, 150 - (score * 5)); 
+                Thread.Sleep(speed);
             }
 
             DisplayGameOver();
@@ -74,6 +84,7 @@ namespace AP8PO_Had
         {
             if (snake.HasCollided(screenWidth, screenHeight))
                 isGameOver = true;
+
             if (snake.xHeadPos == berry.XPos && snake.yHeadPos == berry.YPos)
             {
                 score++;
@@ -90,9 +101,8 @@ namespace AP8PO_Had
 
         private void DisplayGameOver()
         {
-            SetCursorPosition(screenWidth / 5, screenHeight / 2);
-            WriteLine($"Game over, Score: {score}");
-            SetCursorPosition(screenWidth / 5, screenHeight / 2 + 1);
+            SetCursorPosition(screenWidth / 3, screenHeight / 2);
+            WriteLine($"Game Over! Score: {score}");
         }
     }
 
@@ -101,6 +111,7 @@ namespace AP8PO_Had
         private List<int> xBodyPos;
         private List<int> yBodyPos;
         private Direction movement;
+        private bool grew;
 
         public int xHeadPos => xBodyPos[^1];
         public int yHeadPos => yBodyPos[^1];
@@ -110,41 +121,48 @@ namespace AP8PO_Had
             xBodyPos = new List<int> { startX };
             yBodyPos = new List<int> { startY };
             movement = Direction.Right;
+            grew = false;
         }
 
         public void Move()
         {
             movement = InputHandler.ReadMovement(movement);
-            xBodyPos.Add(xHeadPos);
-            yBodyPos.Add(yHeadPos);
+            
+            int newX = xHeadPos;
+            int newY = yHeadPos;
 
             switch (movement)
             {
-                case Direction.Up:
-                    yBodyPos[^1]--;
-                    break;
-                case Direction.Down:
-                    yBodyPos[^1]++;
-                    break;
-                case Direction.Left:
-                    xBodyPos[^1]--;
-                    break;
-                case Direction.Right:
-                    xBodyPos[^1]++;
-                    break;
+                case Direction.Up: newY--; break;
+                case Direction.Down: newY++; break;
+                case Direction.Left: newX--; break;
+                case Direction.Right: newX++; break;
+            }
+
+            xBodyPos.Add(newX);
+            yBodyPos.Add(newY);
+            
+            if (!grew)
+            {
+                xBodyPos.RemoveAt(0);
+                yBodyPos.RemoveAt(0);
+            }
+            else
+            {
+                grew = false;
             }
         }
 
         public void Grow()
         {
-            xBodyPos.Insert(0, xBodyPos[0]);
-            yBodyPos.Insert(0, yBodyPos[0]);
+            grew = true;
         }
 
         public bool HasCollided(int width, int height)
         {
             if (xHeadPos == 0 || xHeadPos == width - 1 || yHeadPos == 0 || yHeadPos == height - 1)
                 return true;
+
             for (int i = 0; i < xBodyPos.Count - 1; i++)
             {
                 if (xBodyPos[i] == xHeadPos && yBodyPos[i] == yHeadPos)
