@@ -10,12 +10,10 @@ namespace AP8PO_Had
             game.Run();
         }
     }
-
+    
     class Game
     {
-        private int screenWidth;
-        private int screenHeight;
-        private int score;
+        private int screenWidth, screenHeight, score;
         private bool isGameOver;
         private Snake snake;
         private Berry berry;
@@ -28,8 +26,8 @@ namespace AP8PO_Had
             score = 5;
             isGameOver = false;
             random = new Random();
-            snake = new Snake(screenWidth / 2, screenHeight / 2);
-            berry = new Berry(random.Next(1, screenWidth - 2), random.Next(1, screenHeight - 2));
+            snake = new Snake(new Point(screenWidth / 2, screenHeight / 2));
+            berry = new Berry(new Point(random.Next(1, screenWidth - 2), random.Next(1, screenHeight - 2)));
 
             try
             {
@@ -48,75 +46,42 @@ namespace AP8PO_Had
             while (!isGameOver)
             {
                 Clear();
-                DrawBorders();
+                ConsoleRenderer.DrawBorder(screenWidth, screenHeight);
                 CheckCollisions();
                 snake.Move();
-                DrawObjects();
-                
-                int speed = Math.Max(50, 150 - (score * 5)); 
+                snake.Draw();
+                berry.Draw();
+
+                int speed = Math.Max(50, 150 - (score * 5));
                 Thread.Sleep(speed);
             }
-
-            DisplayGameOver();
-        }
-
-        private void DrawBorders()
-        {
-            ForegroundColor = ConsoleColor.White;
-            for (int i = 0; i < screenWidth; i++)
-            {
-                SetCursorPosition(i, 0);
-                Write("■");
-                SetCursorPosition(i, screenHeight - 1);
-                Write("■");
-            }
-
-            for (int i = 0; i < screenHeight; i++)
-            {
-                SetCursorPosition(0, i);
-                Write("■");
-                SetCursorPosition(screenWidth - 1, i);
-                Write("■");
-            }
+            DisplayGameOverAd();
         }
 
         private void CheckCollisions()
         {
             if (snake.HasCollided(screenWidth, screenHeight))
                 isGameOver = true;
-
-            if (snake.xHeadPos == berry.XPos && snake.yHeadPos == berry.YPos)
+            if (snake.Head.Equals(berry.Position))
             {
                 score++;
-                berry = new Berry(random.Next(1, screenWidth - 2), random.Next(1, screenHeight - 2));
+                berry = new Berry(new Point(random.Next(1, screenWidth - 2), random.Next(1, screenHeight - 2)));
                 snake.Grow();
             }
         }
 
-        private void DrawObjects()
-        {
-            snake.Draw();
-            berry.Draw();
-        }
-
-        private void DisplayGameOver()
+        private void DisplayGameOverAd()
         {
             SetCursorPosition(screenWidth / 3, screenHeight / 2);
             WriteLine($"Game Over! Score: {score}");
-
-            // Display Advertisement
-            ShowAdvertisement();
-        }
-
-        private void ShowAdvertisement()
-        {
+            
             SetCursorPosition(screenWidth / 4, screenHeight / 2 + 2);
             WriteLine("*************************************");
             SetCursorPosition(screenWidth / 4, screenHeight / 2 + 3);
             WriteLine("The best games at throwtable.com (╯°□°)╯︵ ┻━┻");
             SetCursorPosition(screenWidth / 4, screenHeight / 2 + 4);
             WriteLine("*************************************");
-            
+    
             SetCursorPosition(screenWidth / 4, screenHeight / 2 + 6);
             WriteLine("Press any key to exit...");
             ReadKey();
@@ -126,18 +91,15 @@ namespace AP8PO_Had
 
     class Snake
     {
-        private List<int> xBodyPos;
-        private List<int> yBodyPos;
+        private List<Point> body;
         private Direction movement;
         private bool grew;
 
-        public int xHeadPos => xBodyPos[^1];
-        public int yHeadPos => yBodyPos[^1];
+        public Point Head => body[^1];
 
-        public Snake(int startX, int startY)
+        public Snake(Point start)
         {
-            xBodyPos = new List<int> { startX };
-            yBodyPos = new List<int> { startY };
+            body = new List<Point> { start };
             movement = Direction.Right;
             grew = false;
         }
@@ -145,107 +107,120 @@ namespace AP8PO_Had
         public void Move()
         {
             movement = InputHandler.ReadMovement(movement);
-            
-            int newX = xHeadPos;
-            int newY = yHeadPos;
-
-            switch (movement)
+            Point newHead = movement switch
             {
-                case Direction.Up: newY--; break;
-                case Direction.Down: newY++; break;
-                case Direction.Left: newX--; break;
-                case Direction.Right: newX++; break;
-            }
-
-            xBodyPos.Add(newX);
-            yBodyPos.Add(newY);
-            
-            if (!grew)
-            {
-                xBodyPos.RemoveAt(0);
-                yBodyPos.RemoveAt(0);
-            }
-            else
-            {
-                grew = false;
-            }
+                Direction.Up => new Point(Head.X, Head.Y - 1),
+                Direction.Down => new Point(Head.X, Head.Y + 1),
+                Direction.Left => new Point(Head.X - 1, Head.Y),
+                Direction.Right => new Point(Head.X + 1, Head.Y),
+                _ => Head
+            };
+            body.Add(newHead);
+            if (!grew) body.RemoveAt(0);
+            else grew = false;
         }
 
-        public void Grow()
-        {
-            grew = true;
-        }
+        public void Grow() => grew = true;
 
         public bool HasCollided(int width, int height)
         {
-            if (xHeadPos == 0 || xHeadPos == width - 1 || yHeadPos == 0 || yHeadPos == height - 1)
-                return true;
+            return Head.X == 0 || Head.X == width - 1 || Head.Y == 0 || Head.Y == height - 1 || body.Take(body.Count - 1).Contains(Head);
 
-            for (int i = 0; i < xBodyPos.Count - 1; i++)
-            {
-                if (xBodyPos[i] == xHeadPos && yBodyPos[i] == yHeadPos)
-                    return true;
-            }
-
-            return false;
         }
 
         public void Draw()
         {
-            ForegroundColor = ConsoleColor.Green;
-            for (int i = 0; i < xBodyPos.Count; i++)
+            foreach (var part in body)
             {
-                SetCursorPosition(xBodyPos[i], yBodyPos[i]);
-                Write("■");
+                ConsoleRenderer.Draw(part, ConsoleColor.Green, "■");
             }
         }
     }
 
-    class InputHandler
+    abstract class ConsoleRenderer
+    {
+        public static void DrawBorder(int width, int height)
+        {
+            ForegroundColor = ConsoleColor.White;
+            for (int i = 0; i < width; i++)
+            {
+                SetCursorPosition(i, 0);
+                Write("■");
+                SetCursorPosition(i, height - 1);
+                Write("■");
+            }
+            for (int i = 0; i < height; i++)
+            {
+                SetCursorPosition(0, i);
+                Write("■");
+                SetCursorPosition(width - 1, i);
+                Write("■");
+            }
+        }
+
+        public static void Draw(Point point, ConsoleColor color, string symbol)
+        {
+            ForegroundColor = color;
+            SetCursorPosition(point.X, point.Y);
+            Write(symbol);
+        }
+    }
+
+    abstract class InputHandler
     {
         public static Direction ReadMovement(Direction movement)
         {
             if (KeyAvailable)
             {
                 var key = ReadKey(true).Key;
-                if (key == ConsoleKey.UpArrow && movement != Direction.Down)
-                    return Direction.Up;
-                else if (key == ConsoleKey.DownArrow && movement != Direction.Up)
-                    return Direction.Down;
-                else if (key == ConsoleKey.LeftArrow && movement != Direction.Right)
-                    return Direction.Left;
-                else if (key == ConsoleKey.RightArrow && movement != Direction.Left)
-                    return Direction.Right;
+                if (key == ConsoleKey.UpArrow && movement != Direction.Down) return Direction.Up;
+                if (key == ConsoleKey.DownArrow && movement != Direction.Up) return Direction.Down;
+                if (key == ConsoleKey.LeftArrow && movement != Direction.Right) return Direction.Left;
+                if (key == ConsoleKey.RightArrow && movement != Direction.Left) return Direction.Right;
             }
-
             return movement;
         }
     }
 
     enum Direction
     {
-        Up,
-        Down,
-        Right,
-        Left
+        Up, Down, Right, Left
     }
+    
+    struct Point
+    {
+        public int X { get; }
+        public int Y { get; }
 
+        public Point(int x, int y)
+        {
+            X = x;
+            Y = y;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is Point point && X == point.X && Y == point.Y;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(X, Y);
+        }
+    }
+    
     class Berry
     {
-        public int XPos { get; }
-        public int YPos { get; }
+        public Point Position { get; }
 
-        public Berry(int xPos, int yPos)
+        public Berry(Point position)
         {
-            XPos = xPos;
-            YPos = yPos;
+            Position = position;
         }
 
         public void Draw()
         {
-            SetCursorPosition(XPos, YPos);
-            ForegroundColor = ConsoleColor.Cyan;
-            Write("■");
+            ConsoleRenderer.Draw(Position, ConsoleColor.Cyan, "■");
         }
     }
 }
